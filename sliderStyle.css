@@ -1,0 +1,88 @@
+input[type=range] {
+    /*removes default webkit styles*/
+    -webkit-appearance: none;
+    
+    /*fix for FF unable to apply focus style bug */
+    border: 1px solid #696969;
+    
+    /*required for proper track sizing in FF*/
+    width: 240px;
+}
+input[type=range]::-webkit-slider-runnable-track {
+    height: 3px;
+    background: #696969;
+    border: none;
+    border-radius: 10px;
+}
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    border: none;
+    height: 20px;
+    width: 15px;
+    border-radius: 10%;
+    background: #696969;
+    margin-top: -8px;
+}
+input[type=range]:focus {
+    background: #00FF00;
+}
+input[type=range]:focus::-webkit-slider-runnable-track {
+    background: #00FF00;
+}
+
+input[type=range]::-moz-range-track {
+    width: 240px;
+    height: 3px;
+    background: #696969;
+    border: none;
+    border-radius: 10px;
+}
+input[type=range]::-moz-range-thumb {
+    border: none;
+    height: 20px;
+    width: 15px;
+    border-radius: 10%;
+    background: #696969;
+}
+
+/*hide the outline behind the border*/
+input[type=range]:-moz-focusring{
+    outline: 1px solid #696969;
+    outline-offset: -1px;
+}
+
+input[type=range]::-ms-track {
+    width: 240px;
+    height: 3px;
+    
+    /*remove bg colour from the track, we'll use ms-fill-lower and ms-fill-upper instead */
+    background: transparent;
+    
+    /*leave room for the larger thumb to overflow with a transparent border */
+    border-color: transparent;
+    border-width: 6px 0;
+
+    /*remove default tick marks*/
+    color: transparent;
+}
+input[type=range]::-ms-fill-lower {
+    background: #696969;
+    border-radius: 10px;
+}
+input[type=range]::-ms-fill-upper {
+    background: #696969;
+    border-radius: 10px;
+}
+input[type=range]::-ms-thumb {
+    border: none;
+    height: 20px;
+    width: 15px;
+    border-radius: 10%;
+    background: #696969;
+}
+input[type=range]:focus::-ms-fill-lower {
+    background: #00FF00;
+}
+input[type=range]:focus::-ms-fill-upper {
+    background: #00FF00;
+}

@@ -1,0 +1,339 @@
+<!doctype html>
+<html>
+<head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/15.0.1/react.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/15.0.1/react-dom.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sylvester/0.1.3/sylvester.min.js"></script>    
+<script src="spriteAnimation.js"></script>
+<script src="convolution.glsl.js"></script>
+<link rel="stylesheet" type="text/css" href="sliderStyle.css">
+<style>
+body {
+    font-size: 14px;
+}
+select {
+    background: #696969;
+    color: #00FF00;
+}
+</style>
+</head>
+<body bgcolor="#000000">
+<div id="content"></div>
+<script type="text/javascript">
+
+class GL {
+    constructor(canvas){
+        var gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+        if (!gl) {
+            alert("Unable to initialize WebGL. Your browser may not support it.");
+            gl = null;
+        }
+        this.gl = gl;
+        
+        this.initShaders(blurFragmentShaderSrc, diag5VertexShaderSrc);
+    
+        // init texture coordinates
+        this.texCoordBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);        
+        gl.bufferData(
+            gl.ARRAY_BUFFER, 
+            new Float32Array([
+                0.0,  0.0,
+                1.0,  0.0,
+                0.0,  1.0,
+                0.0,  1.0,
+                1.0,  0.0,
+                1.0,  1.0]), 
+            gl.STATIC_DRAW);
+        
+        // create position buffer
+        this.positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+      
+        //create texture
+        this.texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, this.texture);
+        
+        //normalize image to powers of two
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        
+        //set resolution
+        gl.uniform2f(this.resolutionLocation, canvas.width, canvas.height);
+        
+        //set blur ammount 
+        gl.uniform1f(this.widthLocation, 0.0);
+    }
+    
+    initShaders(fShader, vShader) {
+        var gl = this.gl;
+        
+        if(this.shaderProgram) {
+           gl.deleteProgram(shaderProgram); 
+        }
+        
+        var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(fragmentShader, fShader);
+        gl.compileShader(fragmentShader);
+        
+        var vertexShader = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vertexShader, vShader);
+        gl.compileShader(vertexShader);
+        
+        var shaderProgram = gl.createProgram();
+        gl.attachShader(shaderProgram, vertexShader);
+        gl.attachShader(shaderProgram, fragmentShader);
+        gl.linkProgram(shaderProgram);
+        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+            alert("An error occurred linking the shaders: " + gl.getProgramInfoLog(shaderProgram));
+            return;
+        }
+        
+        gl.useProgram(shaderProgram);
+                
+        this.shaderProgram = shaderProgram;
+        this.positionLocation = gl.getAttribLocation(shaderProgram, "position");
+        this.texCoordLocation = gl.getAttribLocation(shaderProgram, "texcoord");
+        this.resolutionLocation = gl.getUniformLocation(shaderProgram, "resolution");
+        this.widthLocation = gl.getUniformLocation(shaderProgram, "width");
+    }
+    
+    render(bufferCanvas, x, y, blurWidth) { 
+        var gl = this.gl;
+        
+        gl.useProgram(this.shaderProgram);
+        
+        //texture coordinates
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
+        gl.enableVertexAttribArray(this.texCoordLocation);
+        gl.vertexAttribPointer(this.texCoordLocation, 2, gl.FLOAT, false, 8, 0);
+        
+        //load buffer
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+        gl.enableVertexAttribArray(this.positionLocation);
+        gl.vertexAttribPointer(this.positionLocation, 2, gl.FLOAT, false, 8, 0);
+        
+        //draw size and position
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([   
+            x, y,
+            x + bufferCanvas.width, y,
+            x, y + bufferCanvas.height,
+            x, y + bufferCanvas.height,
+            x+ bufferCanvas.width, y,
+            x+ bufferCanvas.width, y + bufferCanvas.height]), gl.STATIC_DRAW);
+        
+        //load texture from 2d canvas
+        gl.bindTexture(gl.TEXTURE_2D, this.texture);
+        gl.texImage2D(gl.TEXTURE_2D, 
+                           0, 
+                           gl.RGBA, 
+                           gl.RGBA, 
+                           gl.UNSIGNED_BYTE, 
+                           bufferCanvas);
+        
+        //set resolution
+        gl.uniform2f(this.resolutionLocation, gl.canvas.width, gl.canvas.height);  
+        
+        //update blur ammount
+        gl.uniform1f(this.widthLocation, blurWidth);
+
+        //draw
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+    
+    clear() {
+        var gl = this.gl;
+        gl.clear(gl.COLOR_BUFFER_BIT);
+    }
+}
+    
+const { Component } = React;
+const { render } = ReactDOM;
+
+class CanvasAnimation extends Component {
+    
+    constructor(){
+        super();
+        this.FPS = 32;
+        this.blur = 0.0;
+        this.state = {
+            data: [
+                {
+                    "id": "fan", 
+                    "width": 360, 
+                    "height": 240, 
+                    "left": 0,
+                    "top": 0,
+                    "spriteSheetURL": "fan.jpg", 
+                    "rows": 6, 
+                    "columns": 5, 
+                    "totalFrames": 30
+                }
+            ]
+        };
+        this.shaders = [
+            {name:"BLUR", shader:"blurFragmentShaderSrc_diag5VertexShaderSrc"},
+            {name:"RADIAL BLUR", shader:"radialblurFragmentShaderSrc_passthruVertexShaderSrc"},
+            {name:"DILATE", shader:"dilateFragmentShaderSrc_box8VertexShaderSrc"},
+            {name:"ERODE", shader:"erodeFragmentShaderSrc_box8VertexShaderSrc"},
+            {name:"MEDIAN", shader:"medianFragmentShaderSrc_medianVertexShaderSrc"},
+            {name:"SHARPEN", shader:"sharpenFragmentShaderSrc_diag5VertexShaderSrc"},
+            {name:"EMBOSS", shader:"embossFragmentShaderSrc_embossVertexShaderSrc"},
+            {name:"LAPLACE", shader:"laplaceFragmentShaderSrc_laplaceVertexShaderSrc"}
+        ]
+    }
+    
+    componentDidMount() {
+        function animation(json) {
+            Promise.all(json.map( (data) => {
+                return(
+                    new CanvasSprite(
+                        document.getElementById(data.id),                                    
+                        data.width,
+                        data.height,
+                        data.spriteSheetURL,
+                        data.rows,
+                        data.columns,
+                        data.totalFrames)
+                )
+            })).then( (canvasSprites) => {
+                 this.animation = canvasSprites;
+                 this.animation.canvasGL = new GL(document.getElementById('main-canvas'));
+                 //add destructor for old context and intialize a new one with shaders as args
+                 this.loop(this);
+                 document.getElementById('sliderFPS').value = 3;
+                 document.getElementById('sliderBlur').value = 0.0;
+                })
+        };
+        animation.call(this, this.state.data);
+    }
+    
+    loop(scope) {
+        var frame = 0;
+        var previousTime = performance.now();
+        var ellapsedTime;
+        var looper = function(time) {
+            ellapsedTime = time - previousTime;
+            previousTime = time;
+            frame += (ellapsedTime  /  (1000 / scope.FPS)  )  /  ellapsedTime;
+            if(frame >= 1) {		
+                frame = 0;
+            }
+            scope.animation[0].setFrame(frame);
+            scope.animation.canvasGL.render(document.getElementById(scope.state.data[0].id), 
+                                            scope.state.data[0].left, 
+                                            scope.state.data[0].top, 
+                                            scope.blur);
+            
+            requestAnimationFrame(looper);
+        }
+        looper(performance.now());
+    }
+    
+    sliderFPS(event) {
+        this.FPS = Math.pow(event.target.value, 2);
+    }
+    
+    sliderBlur(event) {
+        this.blur = event.target.value;
+    }
+    
+    shaderChanger(selectedIndex) {
+        //dilate & median not loading
+        //raidal blur is fucked up...
+        this.animation.canvasGL.initShaders(
+            window[document.getElementById("menu").value.split("_")[0]],
+            window[document.getElementById("menu").value.split("_")[1]]);
+    }
+    
+    render() {
+        var canvases = this.state.data.map( (data) => {
+            return (
+                React.createElement('canvas',
+                                    {id : data.id,
+                                    width : data.width,
+                                    height : data.height,
+                                    left: data.left,
+                                    top: data.top,
+                                    style:  {display:'none'}})
+            )
+        });
+        
+        var mainCanvas = React.createElement('canvas',
+                                             {id: 'main-canvas',
+                                              width : "360px",
+                                              height : "240px",
+                                              left: "0px",
+                                              top: "0px"});
+        
+        var vertexMenu = React.createElement('select',
+                                             {id: "menu",
+                                              style: {width: "353px",
+                                                      left: "10px", 
+                                                      top: "280px", 
+                                                      position: "absolute"},
+                                             onChange : (selectedIndex) =>
+                                                        this.shaderChanger(selectedIndex)}, 
+            this.shaders.map( (shaders) => {
+                return (React.createElement('option',
+                                            {value: shaders.shader,
+                                             label: shaders.name}))}));
+        
+        var textBlur = React.createElement('span',
+                                          {style: {left: "10px", 
+                                                   top: "317px",
+                                                   color: "#00FF00",
+                                                   position: "absolute"}},
+                                         'Convolution');
+        
+        var sliderBlur = React.createElement('input',
+                                         {id: 'sliderBlur',
+                                         type: 'range',
+                                         min: 0.0,
+                                         max: 0.5,
+                                         step: 0.01,
+                                         style: {width: "270px",
+                                                 left: "85px", 
+                                                 top: "320px", 
+                                                 position: "absolute"},
+                                         onChange : (event) => this.sliderBlur(event)});
+        
+        var textFPS = React.createElement('span',
+                                          {style: {left: "10px", 
+                                                   top: "347px",
+                                                   color: "#00FF00",
+                                                   position: "absolute"}},
+                                         'FPS');
+        
+        var sliderFPS = React.createElement('input',
+                                         {id: 'sliderFPS',
+                                         type: 'range',
+                                         min: 1,
+                                         max: 6,
+                                         step: 0.1,
+                                         style: {width: "270px",
+                                                 left: "85px", 
+                                                 top: "350px", 
+                                                 position: "absolute"},
+                                         onChange : (event) => this.sliderFPS(event)});
+        
+        return(
+            React.createElement('div', null, mainCanvas, 
+                                            ...canvases,
+                                            vertexMenu,
+                                            textBlur,
+                                            sliderBlur,
+                                            textFPS,
+                                            sliderFPS));
+    }
+}
+    
+render(
+    React.createElement(CanvasAnimation, null),
+    document.getElementById('content')
+);
+</script>
+</body>
+</html>
