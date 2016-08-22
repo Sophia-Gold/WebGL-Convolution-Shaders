@@ -8,3 +8,5 @@ I put together this tiny demo to show the following:
 Please note this makes use of both [React.js](https://github.com/facebook/react) and my own [spriteAnimation.js](https://github.com/Sophia-Gold/spriteAnimation.js).
 
 I hope might be helpful for some people learning WebGL!
+
+**Example of all the shaders running can be seen [here](http://sretaeper.ucoz.com/convo_demo/index.html).**
