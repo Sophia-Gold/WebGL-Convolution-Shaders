@@ -20,7 +20,9 @@ select {
 <body bgcolor="#000000">
 <div id="content"></div>
 <script type="text/javascript">
-
+var FPS = 32;
+var blur = 0.0;    
+    
 class GL {
     constructor(canvas){
         var gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
@@ -153,11 +155,8 @@ const { Component } = React;
 const { render } = ReactDOM;
 
 class CanvasAnimation extends Component {
-    
     constructor(){
         super();
-        this.FPS = 32;
-        this.blur = 0.0;
         this.state = {
             data: [
                 {
@@ -201,10 +200,7 @@ class CanvasAnimation extends Component {
             })).then( (canvasSprites) => {
                  this.animation = canvasSprites;
                  this.animation.canvasGL = new GL(document.getElementById('main-canvas'));
-                 //add destructor for old context and intialize a new one with shaders as args
                  this.loop(this);
-                 document.getElementById('sliderFPS').value = 3;
-                 document.getElementById('sliderBlur').value = 0.0;
                 })
         };
         animation.call(this, this.state.data);
@@ -217,7 +213,7 @@ class CanvasAnimation extends Component {
         var looper = function(time) {
             ellapsedTime = time - previousTime;
             previousTime = time;
-            frame += (ellapsedTime  /  (1000 / scope.FPS)  )  /  ellapsedTime;
+            frame += (ellapsedTime  /  (1000 / FPS)  )  /  ellapsedTime;
             if(frame >= 1) {		
                 frame = 0;
             }
@@ -225,24 +221,14 @@ class CanvasAnimation extends Component {
             scope.animation.canvasGL.render(document.getElementById(scope.state.data[0].id), 
                                             scope.state.data[0].left, 
                                             scope.state.data[0].top, 
-                                            scope.blur);
+                                            blur);
             
             requestAnimationFrame(looper);
         }
         looper(performance.now());
     }
     
-    sliderFPS(event) {
-        this.FPS = Math.pow(event.target.value, 2);
-    }
-    
-    sliderBlur(event) {
-        this.blur = event.target.value;
-    }
-    
     shaderChanger(selectedIndex) {
-        //dilate & median not loading
-        //raidal blur is fucked up...
         this.animation.canvasGL.initShaders(
             window[document.getElementById("menu").value.split("_")[0]],
             window[document.getElementById("menu").value.split("_")[1]]);
@@ -281,14 +267,31 @@ class CanvasAnimation extends Component {
                                             {value: shaders.shader,
                                              label: shaders.name}))}));
         
-        var textBlur = React.createElement('span',
+        return(
+            React.createElement('div', null, mainCanvas, 
+                                            ...canvases,
+                                            vertexMenu));
+    }
+}
+    
+class sliderReactBlur extends Component {
+    componentDidMount() {
+        document.getElementById('sliderBlur').value = 0.0;
+    }
+    
+    sliderChanged(event) {
+        blur = event.target.value;
+    }
+    
+    render() {
+        var caption = React.createElement('span',
                                           {style: {left: "10px", 
                                                    top: "317px",
                                                    color: "#00FF00",
                                                    position: "absolute"}},
                                          'Convolution');
         
-        var sliderBlur = React.createElement('input',
+        var slider = React.createElement('input',
                                          {id: 'sliderBlur',
                                          type: 'range',
                                          min: 0.0,
@@ -298,16 +301,30 @@ class CanvasAnimation extends Component {
                                                  left: "85px", 
                                                  top: "320px", 
                                                  position: "absolute"},
-                                         onChange : (event) => this.sliderBlur(event)});
+                                         onChange : (event) => this.sliderChanged(event)});
         
-        var textFPS = React.createElement('span',
+        return( React.createElement('div', null, caption, slider) );
+    }
+}
+    
+class sliderReactFPS extends Component {
+    componentDidMount() {
+        document.getElementById('sliderFPS').value = 3;
+    }
+    
+    sliderChanged(event) {
+        FPS = Math.pow(event.target.value, 2);
+    }
+    
+    render() {
+        var caption = React.createElement('span',
                                           {style: {left: "10px", 
                                                    top: "347px",
                                                    color: "#00FF00",
                                                    position: "absolute"}},
                                          'FPS');
         
-        var sliderFPS = React.createElement('input',
+        var slider = React.createElement('input',
                                          {id: 'sliderFPS',
                                          type: 'range',
                                          min: 1,
@@ -317,21 +334,17 @@ class CanvasAnimation extends Component {
                                                  left: "85px", 
                                                  top: "350px", 
                                                  position: "absolute"},
-                                         onChange : (event) => this.sliderFPS(event)});
+                                         onChange : (event) => this.sliderChanged(event)});
         
-        return(
-            React.createElement('div', null, mainCanvas, 
-                                            ...canvases,
-                                            vertexMenu,
-                                            textBlur,
-                                            sliderBlur,
-                                            textFPS,
-                                            sliderFPS));
+        return( React.createElement('div', null, caption, slider) );
     }
 }
     
 render(
-    React.createElement(CanvasAnimation, null),
+    React.createElement('div', null,
+                        React.createElement(CanvasAnimation),
+                        React.createElement(sliderReactBlur),
+                        React.createElement(sliderReactFPS)),
     document.getElementById('content')
 );
 </script>
