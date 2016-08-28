@@ -9,4 +9,4 @@ Please note this makes use of both [React.js](https://github.com/facebook/react)
 
 I hope might be helpful for some people learning WebGL!
 
-**Example of all the shaders running can be seen [here](http://sretaeper.ucoz.com/convo_demo/index.html).**
+**Example of all the shaders running can be seen [here](http://sretaeper.ucoz.com/shader_demo/index.html).**
