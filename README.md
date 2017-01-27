@@ -7,6 +7,20 @@ I put together this tiny demo to show the following:
 
 Please note this makes use of both [React.js](https://github.com/facebook/react) and my own [spriteAnimation.js](https://github.com/Sophia-Gold/spriteAnimation.js).
 
+---
+Fragment shaders include:
+
++ box blur
++ radial blur
++ dilation
++ erosion
++ median filter
++ sharpen
++ emboss (Sobel filter)
++ Laplace filter
+
+---
+
 I hope might be helpful for some people learning WebGL!
 
 **Example of all the shaders running can be seen [here](http://sretaeper.ucoz.com/shader_demo/index.html).**
