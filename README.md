@@ -1,4 +1,4 @@
-#WebGL Convolution Shaders Demo
+# WebGL Convolution Shaders Demo
 I put together this tiny demo to show the following:
 * A collection of convolution-based image processing shaders.
 * WebGL used as a powerful *rasterization API* rather than a full-blown *3D library,* for which I'd recommend using [three.js](http://threejs.org/).
